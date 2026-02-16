@@ -31,10 +31,8 @@ typedef struct lval {
 	/* Error and symbol types have string data */
 	char* err;
 	char* sym;
-	/* Count and pointer to a list of lval* */
-	/* Traditionally this would actually be done as linked lists */
-	int count;
-	struct lval** cell;
+
+	struct lval* cell;
 } lval;
 
 /* Create a new number type lval */
@@ -57,7 +55,6 @@ lval* lval_err(char* m) {
 lval* lval_sexpr(void) {
 	lval* v = malloc(sizeof(lval));
 	v->type = LVAL_SEXPR;
-	v->count = 0;
 	v->cell = NULL;
 	return v;
 }
@@ -77,12 +74,8 @@ void lval_del(lval* v) {
 		case LVAL_ERR: free(v->err); break;
 		case LVAL_SYM: free(v->sym); break;
 		case LVAL_SEXPR:
-			for (int i = 0; i < v->count; i++) {
-				lval_del(v->cell[i]);
-			}
-
-			free(v->cell);
-		break;
+			lval_del(v->cell);
+			break;
 	}
 	free(v);
 }
@@ -95,12 +88,17 @@ lval* lval_read_num(mpc_ast_t* t) {
 }
 
 
-/* tbh this is way less intuitive using lval** instead of linked list */
-
+/* Append to end of linked list (cell) */
 lval* lval_add(lval* v, lval* x) {
-	v->count++;
-	v->cell = realloc(v->cell, sizeof(lval*) * v->count);
-	v->cell[v->count - 1] = x;
+	lval* end = v->cell;
+	if (end == NULL) {
+		v->cell = x;
+		return;
+	}
+	while (end->cell != NULL) {
+		end = end->cell;
+	}
+	end->cell = x;
 	return v;
 }
 
@@ -127,13 +125,17 @@ void lval_print(lval* v);
 
 void lval_expr_print(lval* v, char open, char close) {
 	putchar(open);
-	for (int i = 0; i < v->count; i++) {
-		lval_print(v->cell[i]);
+
+	lval* ptr = v->cell;
+	while (ptr != NULL) {
+		lval_print(ptr);
 		
-		if (i != (v->count-1)) {
+		if (ptr->cell != NULL) {
 			putchar(' ');
 		}
+		ptr = ptr->cell;
 	}
+
 	putchar(close);
 }
 
@@ -155,11 +157,17 @@ lval* builtin_op(lval* a, char* op);
 
 lval* lval_eval_sexpr(lval* v) {
 	/* Eval any children */
-	for (int i = 0; i < v->count; i++) {
-		v->cell[i] = lval_eval(v->cell[i]);
+	lval* prev = v;
+	lval* ptr = prev->cell;
+	while (ptr != null) {
+		prev->cell = lval_eval(ptr);
+		prev = prev->cell;
+		ptr = prev->cell;
 	}
 
 	/* Check all for errors */
+
+	// TODO - continue with ll re-write
 	for (int i = 0; i < v->count; i++) {
 		if (v->cell[i]->type == LVAL_ERR) { return lval_take(v, i); }
 	}
