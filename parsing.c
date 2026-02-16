@@ -233,12 +233,16 @@ lval* builtin_op(lval* a, char* op) {
 		if (strcmp(op, "+") == 0 ) { x->num += y->num; }
 		if (strcmp(op, "-") == 0 ) { x->num -= y->num; }
 		if (strcmp(op, "*") == 0 ) { x->num *= y->num; }
-		if (strcmp(op, "/") == 0 ) { 
+		if (strcmp(op, "/") == 0 || strcmp(op, "%") == 0 ) { 
 			if (y->num == 0) {
 				lval_del(x); lval_del(y);
 				x = lval_err("Division by Zero!"); break;
 			}
-			x->num /= y->num;
+			if (strcmp(op, "/") == 0 ) {
+				x->num /= y->num;
+			} else {
+				x->num %= y->num;
+			}
 		}
 		if (strcmp(op, "min") == 0 ) { x->num = fminl(x->num, y->num); }
 		if (strcmp(op, "max") == 0 ) { x->num = fmaxl(x->num, y->num); }
